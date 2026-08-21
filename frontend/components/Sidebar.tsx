@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Compass, Film, Tv, Bookmark,
-  Search, BarChart2, Clock, Plus, Smartphone,
+  BarChart2, Clock, Plus,
 } from 'lucide-react'
 
 const NAV = [
@@ -14,7 +14,6 @@ const NAV = [
   { href: '/series',     label: 'Series',     icon: Tv },
   { href: '/watchlist',  label: 'Watchlist',  icon: Bookmark },
   null,
-  { href: '/search',     label: 'Search',     icon: Search },
   { href: '/statistics', label: 'Statistics', icon: BarChart2 },
   { href: '/history',    label: 'History',    icon: Clock },
   null,
