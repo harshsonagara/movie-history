@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Movie {
+  id        Int      @id @default(autoincrement())
+  tmdbId    Int      @unique
+  title     String
+  poster    String?
+  year      Int?
+  genre     String?
+  rating    Float?
+  runtime   Int?
+  director  String?
+  overview  String?
+  status    String   @default("watched") // watched | watching | watchlist
+  progress  Int?
+  watchedAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Series {
+  id            Int      @id @default(autoincrement())
+  tmdbId        Int      @unique
+  title         String
+  poster        String?
+  year          Int?
+  genre         String?
+  rating        Float?
+  overview      String?
+  status        String   @default("watching") // watching | completed | watchlist
+  currentSeason Int?
+  currentEp     Int?
+  totalEps      Int?
+  updatedAt     DateTime @updatedAt
+}
+
+model WatchHistory {
+  id        Int      @id @default(autoincrement())
+  mediaType String   // movie | series
+  tmdbId    Int
+  title     String
+  poster    String?
+  action    String   // watched | rated | added | started
+  rating    Float?
+  note      String?
+  createdAt DateTime @default(now())
+}
