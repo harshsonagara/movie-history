@@ -1,14 +1,13 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
-import { MOCK_SERIES } from '@/lib/mock-data'
 
 export async function GET() {
-  if (!db) return Response.json(MOCK_SERIES)
+  if (!db) return Response.json([])
   try {
     const series = await db.series.findMany({ orderBy: { updatedAt: 'desc' } })
     return Response.json(series)
   } catch {
-    return Response.json(MOCK_SERIES)
+    return Response.json([])
   }
 }
 
