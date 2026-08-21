@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
       },
     })
     // Log to history
-    const action = s.status === 'watchlist' ? 'added' : 'started'
+    const action = s.status === 'watchlist' ? 'added' : s.status === 'completed' ? 'watched' : 'started'
     await db.watchHistory.create({
       data: {
         mediaType: 'series',
