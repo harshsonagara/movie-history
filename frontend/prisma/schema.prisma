@@ -1,11 +1,9 @@
 generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "rhel-openssl-1.0.x"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model Movie {
@@ -43,11 +41,11 @@ model Series {
 
 model WatchHistory {
   id        Int      @id @default(autoincrement())
-  mediaType String   // movie | series
+  mediaType String // movie | series
   tmdbId    Int
   title     String
   poster    String?
-  action    String   // watched | rated | added | started
+  action    String // watched | rated | added | started
   rating    Float?
   note      String?
   createdAt DateTime @default(now())
