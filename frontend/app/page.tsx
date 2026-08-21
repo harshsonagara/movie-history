@@ -23,6 +23,7 @@ export default async function Dashboard() {
   const [movies, series, history, stats, trending] = await Promise.all([
     getMovies(), getSeries(), getHistory(), getStats(), getTrending(),
   ])
+  // ponytail: compute watchlist count from already-fetched data instead of extra DB call
 
   const watching = series.filter(s => s.status === 'watching').slice(0, 4)
   const recent   = movies.filter(m => m.status === 'watched').slice(0, 8)
@@ -56,7 +57,7 @@ export default async function Dashboard() {
         <div className="card stat-blue">
           <div className="stat-number">{stats.showsTracked}</div>
           <div className="stat-label">Shows Tracked</div>
-          <div className="stat-sub">{stats.currentlyWatching} watching</div>
+          <div className="stat-sub">{stats.currentlyWatching} watching · {stats.watchlistCount} in queue</div>
         </div>
         <div className="card stat-teal">
           <div className="stat-number">{stats.hoursWatched.toLocaleString()}h</div>
@@ -178,7 +179,12 @@ export default async function Dashboard() {
             <div>
               {upNext.map(m => (
                 <div key={`${m.mediaType}-${m.id}`} className="watchlist-item">
-                  <div className="watchlist-thumb">{m.title[0]}</div>
+                  <Poster
+                    poster={(m as any).poster}
+                    title={m.title}
+                    imgClassName="watchlist-poster-img"
+                    placeholderClassName="watchlist-thumb"
+                  />
                   <div className="watchlist-info">
                     <div className="watchlist-title">
                       {m.title}

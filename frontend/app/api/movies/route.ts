@@ -30,6 +30,18 @@ export async function POST(req: NextRequest) {
         status:   body.status   ?? 'watched',
       },
     })
+    // Log to history
+    const action = movie.status === 'watchlist' ? 'added' : 'watched'
+    await db.watchHistory.create({
+      data: {
+        mediaType: 'movie',
+        tmdbId:    movie.tmdbId,
+        title:     movie.title,
+        poster:    movie.poster ?? null,
+        action,
+        rating:    movie.rating ?? null,
+      },
+    }).catch(() => {})
     return Response.json(movie, { status: 201 })
   } catch {
     return Response.json({ error: 'DB unavailable' }, { status: 503 })

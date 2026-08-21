@@ -14,6 +14,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ...(body.progress !== undefined && { progress: Number(body.progress) }),
       },
     })
+    // Log to history when marked as watched
+    if (body.status === 'watched') {
+      await db.watchHistory.create({
+        data: {
+          mediaType: 'movie',
+          tmdbId:    movie.tmdbId,
+          title:     movie.title,
+          poster:    movie.poster ?? null,
+          action:    'watched',
+          rating:    movie.rating ?? null,
+        },
+      }).catch(() => {})
+    }
     return Response.json(movie)
   } catch {
     return Response.json({ error: 'Not found' }, { status: 404 })

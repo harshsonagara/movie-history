@@ -15,6 +15,30 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ...(body.currentEp     !== undefined && { currentEp: Number(body.currentEp) }),
       },
     })
+    // Log to history when completed or when episode is updated
+    if (body.status === 'completed') {
+      await db.watchHistory.create({
+        data: {
+          mediaType: 'series',
+          tmdbId:    s.tmdbId,
+          title:     s.title,
+          poster:    s.poster ?? null,
+          action:    'watched',
+          rating:    s.rating ?? null,
+        },
+      }).catch(() => {})
+    } else if (body.currentEp !== undefined) {
+      await db.watchHistory.create({
+        data: {
+          mediaType: 'series',
+          tmdbId:    s.tmdbId,
+          title:     s.title,
+          poster:    s.poster ?? null,
+          action:    'watched',
+          note:      s.currentSeason != null ? `S${s.currentSeason}E${s.currentEp}` : undefined,
+        },
+      }).catch(() => {})
+    }
     return Response.json(s)
   } catch {
     return Response.json({ error: 'Not found' }, { status: 404 })

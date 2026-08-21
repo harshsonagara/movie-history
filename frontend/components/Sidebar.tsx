@@ -55,10 +55,10 @@ export default function Sidebar() {
       </nav>
 
       <div className="sidebar-user">
-        <div className="user-avatar">A</div>
+        <div className="user-avatar">C</div>
         <div>
-          <div className="user-name">Alex Chen</div>
-          <div className="user-sub">Pro · 247 day streak</div>
+          <div className="user-name">CineLog</div>
+          <div className="user-sub">Personal Tracker</div>
         </div>
       </div>
     </aside>
