@@ -51,7 +51,7 @@ export function GenrePieChart({ data, total }: { data: GenreData[]; total: numbe
         </Pie>
         <Tooltip
           contentStyle={TOOLTIP_STYLE}
-          formatter={(v: number) => [`${v}%`, '']}
+          formatter={(v: unknown) => [`${v}%`, '']}
         />
         {/* Centre label via foreignObject isn't reliable; use absolute CSS instead */}
       </PieChart>

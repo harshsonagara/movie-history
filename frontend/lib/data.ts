@@ -1,7 +1,8 @@
 import { db } from './db'
 import { MOCK_MOVIES, MOCK_SERIES, MOCK_HISTORY, MOCK_STATS } from './mock-data'
 
-async function q<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
+// ponytail: fallback is `any` so mock-data shapes don't need to mirror Prisma's generated types
+async function q<T>(fn: () => Promise<T>, fallback: any): Promise<T> {
   if (!db) return fallback
   try { return await fn() } catch { return fallback }
 }

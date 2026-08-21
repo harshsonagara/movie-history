@@ -10,7 +10,7 @@ function greeting() {
   return 'Good evening'
 }
 
-function timeAgo(iso: string) {
+function timeAgo(iso: Date | string) {
   const diff = Date.now() - new Date(iso).getTime()
   const h = Math.floor(diff / 3600000)
   const d = Math.floor(diff / 86400000)

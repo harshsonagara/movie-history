@@ -25,7 +25,7 @@ export default function SeriesPage() {
       .catch(() => setSeries(MOCK_SERIES))
   }, [])
 
-  const display = series.length ? series : MOCK_SERIES
+  const display: Series[] = series.length ? series : (MOCK_SERIES as unknown as Series[])
   const filtered = tab === 'All Shows' ? display : display.filter(s => s.status === STATUS_MAP[tab])
   const watching = display.filter(s => s.status === 'watching').length
   const completed = display.filter(s => s.status === 'completed').length
