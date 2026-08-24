@@ -2,34 +2,67 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Poster } from '@/components/Poster'
+import { DetailsModal } from '@/components/DetailsModal'
 
 type WLItem = {
   id: number; tmdbId: number; title: string; year?: number | null
   genre?: string | null; runtime?: number | null; poster?: string | null
+  overview?: string | null; rating?: number | null; status?: string
+  currentSeason?: number | null; currentEp?: number | null; totalEps?: number | null
   mediaType: 'movie' | 'series'
 }
 
+type BaseEntry = {
+  id: number
+  status: string
+}
+
+type MovieEntry = BaseEntry & {
+  tmdbId: number
+  title: string
+  year?: number | null
+  genre?: string | null
+  runtime?: number | null
+  poster?: string | null
+  overview?: string | null
+  rating?: number | null
+}
+
+type SeriesEntry = BaseEntry & {
+  tmdbId: number
+  title: string
+  year?: number | null
+  genre?: string | null
+  poster?: string | null
+  overview?: string | null
+  rating?: number | null
+  currentSeason?: number | null
+  currentEp?: number | null
+  totalEps?: number | null
+}
+
 export default function WatchlistPage() {
-  const [items,   setItems]   = useState<WLItem[]>([])
+  const [items, setItems] = useState<WLItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [viewing, setViewing] = useState<WLItem | null>(null)
 
   useEffect(() => {
     Promise.all([
       fetch('/api/movies').then(r => r.json()),
       fetch('/api/series').then(r => r.json()),
     ]).then(([movies, series]) => {
-      const wlMovies: WLItem[] = (Array.isArray(movies) ? movies : [])
-        .filter((m: any) => m.status === 'watchlist')
-        .map((m: any) => ({ ...m, mediaType: 'movie' as const }))
-      const wlSeries: WLItem[] = (Array.isArray(series) ? series : [])
-        .filter((s: any) => s.status === 'watchlist')
-        .map((s: any) => ({ ...s, mediaType: 'series' as const }))
+      const wlMovies: WLItem[] = (Array.isArray(movies) ? movies as MovieEntry[] : [])
+        .filter(m => m.status === 'watchlist')
+        .map(m => ({ ...m, mediaType: 'movie' as const }))
+      const wlSeries: WLItem[] = (Array.isArray(series) ? series as SeriesEntry[] : [])
+        .filter(s => s.status === 'watchlist')
+        .map(s => ({ ...s, mediaType: 'series' as const }))
       setItems([...wlMovies, ...wlSeries])
-    }).catch(() => {}).finally(() => setLoading(false))
+    }).catch(() => { }).finally(() => setLoading(false))
   }, [])
 
   async function markWatched(item: WLItem) {
-    const endpoint  = item.mediaType === 'movie' ? 'movies' : 'series'
+    const endpoint = item.mediaType === 'movie' ? 'movies' : 'series'
     const newStatus = item.mediaType === 'movie' ? 'watched' : 'completed'
     setItems(prev => prev.filter(i => !(i.id === item.id && i.mediaType === item.mediaType)))
     await fetch(`/api/${endpoint}/${item.id}`, {
@@ -79,20 +112,22 @@ export default function WatchlistPage() {
         <div className="card">
           {items.map(item => (
             <div key={`${item.mediaType}-${item.id}`} className="watchlist-item">
-              <Poster
-                poster={item.poster}
-                title={item.title}
-                imgClassName="watchlist-poster-img"
-                placeholderClassName="watchlist-thumb"
-              />
+              <div className="card-open-surface" onClick={() => setViewing(item)}>
+                <Poster
+                  poster={item.poster}
+                  title={item.title}
+                  imgClassName="watchlist-poster-img"
+                  placeholderClassName="watchlist-thumb"
+                />
+              </div>
               <div className="watchlist-info">
-                <div className="watchlist-title">
+                <div className="watchlist-title card-open-surface" onClick={() => setViewing(item)}>
                   {item.title}
                   <span className={`media-badge media-badge-${item.mediaType}`}>
                     {item.mediaType === 'movie' ? 'Movie' : 'Series'}
                   </span>
                 </div>
-                <div className="watchlist-meta">
+                <div className="watchlist-meta card-open-surface" onClick={() => setViewing(item)}>
                   {item.year}{item.genre ? ` · ${item.genre}` : ''}{item.runtime ? ` · ${item.runtime}min` : ''}
                 </div>
               </div>
@@ -107,6 +142,26 @@ export default function WatchlistPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {viewing && (
+        <DetailsModal
+          item={{
+            type: viewing.mediaType,
+            title: viewing.title,
+            poster: viewing.poster,
+            year: viewing.year,
+            genre: viewing.genre,
+            rating: viewing.rating,
+            status: viewing.status,
+            runtime: viewing.runtime,
+            overview: viewing.overview,
+            currentSeason: viewing.currentSeason,
+            currentEp: viewing.currentEp,
+            totalEps: viewing.totalEps,
+          }}
+          onClose={() => setViewing(null)}
+        />
       )}
     </>
   )

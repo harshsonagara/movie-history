@@ -4,29 +4,31 @@ import Link from 'next/link'
 import { Pencil, Trash2 } from 'lucide-react'
 import { Poster } from '@/components/Poster'
 import { EditModal, type EditTarget } from '@/components/EditModal'
+import { DetailsModal } from '@/components/DetailsModal'
 
 type Movie = {
   id: number; tmdbId: number; title: string; year?: number | null
   rating?: number | null; genre?: string | null; status: string
-  poster?: string | null; runtime?: number | null
+  poster?: string | null; runtime?: number | null; overview?: string | null
 }
 
 const SECTIONS = [
-  { label: 'Currently Watching', status: 'watching'  },
-  { label: 'Your Watchlist',     status: 'watchlist' },
-  { label: 'Watched',            status: 'watched'   },
+  { label: 'Currently Watching', status: 'watching' },
+  { label: 'Your Watchlist', status: 'watchlist' },
+  { label: 'Watched', status: 'watched' },
 ]
 
 export default function MoviesPage() {
-  const [movies,  setMovies]  = useState<Movie[]>([])
+  const [movies, setMovies] = useState<Movie[]>([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<EditTarget | null>(null)
+  const [viewing, setViewing] = useState<Movie | null>(null)
 
   useEffect(() => {
     fetch('/api/movies')
       .then(r => r.json())
       .then((data: Movie[]) => setMovies(Array.isArray(data) ? data : []))
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false))
   }, [])
 
@@ -41,7 +43,7 @@ export default function MoviesPage() {
     setEditing(null)
   }
 
-  const watched   = movies.filter(m => m.status === 'watched').length
+  const watched = movies.filter(m => m.status === 'watched').length
   const watchlist = movies.filter(m => m.status === 'watchlist').length
 
   return (
@@ -85,27 +87,33 @@ export default function MoviesPage() {
             <div className="movie-grid">
               {items.map(m => (
                 <div key={m.id} className="movie-card">
-                  <div className="poster-wrap">
+                  <div className="poster-wrap card-open-surface" onClick={() => setViewing(m)}>
                     <Poster poster={m.poster} title={m.title} />
                     <div className="card-actions">
                       <button
                         className="card-action-btn card-action-edit"
                         title="Edit"
-                        onClick={() => setEditing({ id: m.id, type: 'movie', title: m.title, status: m.status, rating: m.rating })}
+                        onClick={e => {
+                          e.stopPropagation()
+                          setEditing({ id: m.id, type: 'movie', title: m.title, status: m.status, rating: m.rating })
+                        }}
                       >
                         <Pencil size={12} />
                       </button>
                       <button
                         className="card-action-btn card-action-delete"
                         title="Remove"
-                        onClick={() => deleteMovie(m)}
+                        onClick={e => {
+                          e.stopPropagation()
+                          deleteMovie(m)
+                        }}
                       >
                         <Trash2 size={12} />
                       </button>
                     </div>
                   </div>
-                  <div className="movie-title">{m.title}</div>
-                  <div className="movie-meta">
+                  <div className="movie-title card-open-surface" onClick={() => setViewing(m)}>{m.title}</div>
+                  <div className="movie-meta card-open-surface" onClick={() => setViewing(m)}>
                     {m.year} {m.rating != null && <span className="rating-star">★{m.rating}</span>}
                   </div>
                 </div>
@@ -120,6 +128,23 @@ export default function MoviesPage() {
           item={editing}
           onClose={() => setEditing(null)}
           onSave={patch => onSaved(editing.id, patch)}
+        />
+      )}
+
+      {viewing && (
+        <DetailsModal
+          item={{
+            type: 'movie',
+            title: viewing.title,
+            poster: viewing.poster,
+            year: viewing.year,
+            genre: viewing.genre,
+            rating: viewing.rating,
+            status: viewing.status,
+            runtime: viewing.runtime,
+            overview: viewing.overview,
+          }}
+          onClose={() => setViewing(null)}
         />
       )}
     </>

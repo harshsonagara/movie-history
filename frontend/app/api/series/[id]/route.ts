@@ -1,18 +1,143 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
+import { addFallbackHistory, deleteFallbackSeries, updateFallbackSeries } from '@/lib/fallback-store'
+import { getCurrentUserId } from '@/lib/auth-user'
+
+type SeriesMeta = {
+  totalSeasons?: number | null
+  totalEpisodes?: number | null
+  perSeasonEpisodes?: { season: number; episodes: number }[]
+  progress?: {
+    currentSeason?: number | null
+    currentEpisode?: number | null
+    note?: string | null
+  }
+}
+
+function numOrNull(v: unknown): number | null {
+  if (v === null || v === undefined || v === '') return null
+  const n = Number(v)
+  return Number.isFinite(n) ? n : null
+}
+
+function parsePerSeasonEpisodes(v: unknown): { season: number; episodes: number }[] | undefined {
+  if (!Array.isArray(v)) return undefined
+  const rows = v
+    .map(x => ({ season: numOrNull((x as { season?: unknown }).season), episodes: numOrNull((x as { episodes?: unknown }).episodes) }))
+    .filter(x => x.season != null && x.episodes != null)
+    .map(x => ({ season: x.season as number, episodes: x.episodes as number }))
+    .sort((a, b) => a.season - b.season)
+  return rows
+}
+
+function mergeSeriesMeta(existing: SeriesMeta | null | undefined, body: Record<string, unknown>): SeriesMeta {
+  const next: SeriesMeta = { ...(existing ?? {}) }
+
+  if (body.totalSeasons !== undefined) next.totalSeasons = numOrNull(body.totalSeasons)
+  if (body.totalEpisodes !== undefined || body.totalEps !== undefined) {
+    next.totalEpisodes = numOrNull(body.totalEpisodes ?? body.totalEps)
+  }
+
+  const perSeasonEpisodes = parsePerSeasonEpisodes(body.perSeasonEpisodes)
+  if (perSeasonEpisodes !== undefined) {
+    if (perSeasonEpisodes.length) next.perSeasonEpisodes = perSeasonEpisodes
+    else delete next.perSeasonEpisodes
+  }
+
+  const hasProgressPatch =
+    body.currentSeason !== undefined ||
+    body.currentEp !== undefined ||
+    body.currentEpisode !== undefined ||
+    body.currentEpisodeNote !== undefined
+
+  if (hasProgressPatch) {
+    next.progress = { ...(existing?.progress ?? {}) }
+    if (body.currentSeason !== undefined) next.progress.currentSeason = numOrNull(body.currentSeason)
+    if (body.currentEp !== undefined || body.currentEpisode !== undefined) {
+      next.progress.currentEpisode = numOrNull(body.currentEp ?? body.currentEpisode)
+    }
+    if (body.currentEpisodeNote !== undefined) {
+      const note = body.currentEpisodeNote
+      next.progress.note = typeof note === 'string' && note.trim() ? note.trim() : null
+    }
+  }
+
+  return next
+}
+
+function extractCompat(meta: SeriesMeta | null | undefined) {
+  const currentSeason = meta?.progress?.currentSeason ?? null
+  const currentEp = meta?.progress?.currentEpisode ?? null
+  const totalFromSeasons = meta?.perSeasonEpisodes?.reduce((sum, row) => sum + row.episodes, 0) ?? null
+  const totalEps = meta?.totalEpisodes ?? totalFromSeasons
+  return { currentSeason, currentEp, totalEps }
+}
+
+function toSeriesResponse<T extends { seriesMeta?: unknown }>(series: T) {
+  const meta = (series.seriesMeta as SeriesMeta | null | undefined) ?? null
+  return {
+    ...series,
+    ...extractCompat(meta),
+  }
+}
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const userId = await getCurrentUserId()
+  if (!userId) return Response.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
-  const body = await req.json()
-  if (!db) return Response.json({ error: 'DB unavailable' }, { status: 503 })
+  const body = await req.json() as Record<string, unknown>
+  if (!db) {
+    const nextMeta = mergeSeriesMeta(undefined, body)
+    const compat = extractCompat(nextMeta)
+    const s = updateFallbackSeries(parseInt(id), {
+      status: body.status as string | undefined,
+      rating: body.rating === undefined ? undefined : numOrNull(body.rating),
+      seriesMeta: nextMeta,
+      currentSeason: compat.currentSeason,
+      currentEp: compat.currentEp,
+      totalEps: compat.totalEps,
+    })
+    if (!s) return Response.json({ error: 'Not found' }, { status: 404 })
+
+    if (body.status === 'completed') {
+      addFallbackHistory({
+        mediaType: 'series',
+        tmdbId: s.tmdbId,
+        title: s.title,
+        poster: s.poster ?? null,
+        action: 'watched',
+        rating: s.rating ?? null,
+        note: null,
+      })
+    } else if (body.currentEp !== undefined) {
+      addFallbackHistory({
+        mediaType: 'series',
+        tmdbId: s.tmdbId,
+        title: s.title,
+        poster: s.poster ?? null,
+        action: 'watched',
+        rating: s.rating ?? null,
+        note: s.seriesMeta?.progress?.note ?? (s.currentSeason != null ? `S${s.currentSeason}E${s.currentEp}` : null),
+      })
+    }
+    return Response.json(toSeriesResponse(s))
+  }
   try {
+    const seriesId = parseInt(id)
+    const existing = await db.series.findFirst({ where: { id: seriesId, userId } })
+    if (!existing) return Response.json({ error: 'Not found' }, { status: 404 })
+
+    const currentMeta = (existing.seriesMeta as SeriesMeta | null | undefined) ?? null
+    const nextMeta = mergeSeriesMeta(currentMeta, body)
+    const nextStatus = typeof body.status === 'string' ? body.status : undefined
+
     const s = await db.series.update({
-      where: { id: parseInt(id) },
+      where: { id: seriesId },
       data: {
-        ...(body.status        !== undefined && { status: body.status }),
-        ...(body.rating        !== undefined && { rating: body.rating === null ? null : Number(body.rating) }),
-        ...(body.currentSeason !== undefined && { currentSeason: Number(body.currentSeason) }),
-        ...(body.currentEp     !== undefined && { currentEp: Number(body.currentEp) }),
+        ...(nextStatus !== undefined && { status: nextStatus }),
+        ...(body.rating !== undefined && { rating: numOrNull(body.rating) }),
+        ...(body.overview !== undefined && { overview: body.overview as string | null }),
+        seriesMeta: nextMeta,
       },
     })
     // Log to history when completed or when episode is updated
@@ -20,36 +145,46 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       await db.watchHistory.create({
         data: {
           mediaType: 'series',
-          tmdbId:    s.tmdbId,
-          title:     s.title,
-          poster:    s.poster ?? null,
-          action:    'watched',
-          rating:    s.rating ?? null,
+          userId,
+          tmdbId: s.tmdbId,
+          title: s.title,
+          poster: s.poster ?? null,
+          action: 'watched',
+          rating: s.rating ?? null,
         },
-      }).catch(() => {})
+      }).catch(() => { })
     } else if (body.currentEp !== undefined) {
       await db.watchHistory.create({
         data: {
           mediaType: 'series',
-          tmdbId:    s.tmdbId,
-          title:     s.title,
-          poster:    s.poster ?? null,
-          action:    'watched',
-          note:      s.currentSeason != null ? `S${s.currentSeason}E${s.currentEp}` : undefined,
+          userId,
+          tmdbId: s.tmdbId,
+          title: s.title,
+          poster: s.poster ?? null,
+          action: 'watched',
+          note: nextMeta.progress?.note ?? (nextMeta.progress?.currentSeason != null ? `S${nextMeta.progress.currentSeason}E${nextMeta.progress.currentEpisode ?? '?'}` : undefined),
         },
-      }).catch(() => {})
+      }).catch(() => { })
     }
-    return Response.json(s)
+    return Response.json(toSeriesResponse(s))
   } catch {
     return Response.json({ error: 'Not found' }, { status: 404 })
   }
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const userId = await getCurrentUserId()
+  if (!userId) return Response.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
-  if (!db) return Response.json({ error: 'DB unavailable' }, { status: 503 })
+  if (!db) {
+    const ok = deleteFallbackSeries(parseInt(id))
+    if (!ok) return Response.json({ error: 'Not found' }, { status: 404 })
+    return new Response(null, { status: 204 })
+  }
   try {
-    await db.series.delete({ where: { id: parseInt(id) } })
+    const seriesId = parseInt(id)
+    const result = await db.series.deleteMany({ where: { id: seriesId, userId } })
+    if (result.count === 0) return Response.json({ error: 'Not found' }, { status: 404 })
     return new Response(null, { status: 204 })
   } catch {
     return Response.json({ error: 'Not found' }, { status: 404 })

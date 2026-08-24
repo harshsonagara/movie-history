@@ -2,26 +2,32 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { signOut, useSession } from 'next-auth/react'
 import {
   LayoutDashboard, Compass, Film, Tv, Bookmark,
-  BarChart2, Clock, Plus,
+  BarChart2, Clock, Plus, LogOut,
 } from 'lucide-react'
 
 const NAV = [
-  { href: '/',           label: 'Dashboard',  icon: LayoutDashboard },
-  { href: '/discover',   label: 'Discover',   icon: Compass },
-  { href: '/movies',     label: 'Movies',     icon: Film },
-  { href: '/series',     label: 'Series',     icon: Tv },
-  { href: '/watchlist',  label: 'Watchlist',  icon: Bookmark },
+  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/discover', label: 'Discover', icon: Compass },
+  { href: '/movies', label: 'Movies', icon: Film },
+  { href: '/series', label: 'Series', icon: Tv },
+  { href: '/watchlist', label: 'Watchlist', icon: Bookmark },
   null,
   { href: '/statistics', label: 'Statistics', icon: BarChart2 },
-  { href: '/history',    label: 'History',    icon: Clock },
+  { href: '/history', label: 'History', icon: Clock },
   null,
-  { href: '/add',        label: 'Add Content', icon: Plus, highlight: true },
+  { href: '/add', label: 'Add Content', icon: Plus, highlight: true },
 ]
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const { data: session } = useSession()
+
+  if (pathname.startsWith('/login') || pathname.startsWith('/signup')) {
+    return null
+  }
 
   return (
     <aside className="sidebar">
@@ -54,11 +60,19 @@ export default function Sidebar() {
       </nav>
 
       <div className="sidebar-user">
-        <div className="user-avatar">C</div>
+        <div className="user-avatar">{(session?.user?.name?.[0] ?? session?.user?.email?.[0] ?? 'U').toUpperCase()}</div>
         <div>
-          <div className="user-name">CineLog</div>
-          <div className="user-sub">Personal Tracker</div>
+          <div className="user-name">{session?.user?.name ?? 'User'}</div>
+          <div className="user-sub">{session?.user?.email ?? 'Signed in'}</div>
         </div>
+        <button
+          className="sidebar-logout"
+          onClick={() => signOut({ callbackUrl: '/login' })}
+          title="Logout"
+          aria-label="Logout"
+        >
+          <LogOut size={14} />
+        </button>
       </div>
     </aside>
   )

@@ -10,6 +10,7 @@ export type EditTarget = {
   rating?: number | null
   currentSeason?: number | null
   currentEp?: number | null
+  totalEps?: number | null
 }
 
 export function EditModal({
@@ -19,19 +20,21 @@ export function EditModal({
   onClose: () => void
   onSave: (patch: Partial<EditTarget>) => void
 }) {
-  const [status,  setStatus]  = useState(item.status)
-  const [rating,  setRating]  = useState(item.rating?.toString() ?? '')
-  const [season,  setSeason]  = useState(item.currentSeason?.toString() ?? '')
-  const [ep,      setEp]      = useState(item.currentEp?.toString() ?? '')
-  const [saving,  setSaving]  = useState(false)
+  const [status, setStatus] = useState(item.status)
+  const [rating, setRating] = useState(item.rating?.toString() ?? '')
+  const [season, setSeason] = useState(item.currentSeason?.toString() ?? '')
+  const [ep, setEp] = useState(item.currentEp?.toString() ?? '')
+  const [totalEp, setTotalEp] = useState(item.totalEps?.toString() ?? '')
+  const [saving, setSaving] = useState(false)
 
   async function save() {
     setSaving(true)
     const patch: Record<string, unknown> = { status }
     patch.rating = rating !== '' ? parseFloat(rating) : null
     if (item.type === 'series') {
-      if (season !== '') patch.currentSeason = parseInt(season)
-      if (ep     !== '') patch.currentEp     = parseInt(ep)
+      patch.currentSeason = season !== '' ? parseInt(season) : null
+      patch.currentEp = ep !== '' ? parseInt(ep) : null
+      patch.totalEps = totalEp !== '' ? parseInt(totalEp) : null
     }
     const endpoint = item.type === 'movie' ? 'movies' : 'series'
     try {
@@ -85,7 +88,7 @@ export function EditModal({
         </div>
 
         {item.type === 'series' && (
-          <div className="modal-two-col">
+          <div className="modal-three-col">
             <div className="form-group">
               <label>Season</label>
               <input
@@ -100,6 +103,14 @@ export function EditModal({
                 className="form-input"
                 type="number" min="1" placeholder="—"
                 value={ep} onChange={e => setEp(e.target.value)}
+              />
+            </div>
+            <div className="form-group">
+              <label>Total Episodes</label>
+              <input
+                className="form-input"
+                type="number" min="1" placeholder="—"
+                value={totalEp} onChange={e => setTotalEp(e.target.value)}
               />
             </div>
           </div>
