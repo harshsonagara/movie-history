@@ -109,6 +109,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return Response.json({ error: 'rating must be between 0 and 10' }, { status: 400 })
   }
   const nextOverview = body.overview === undefined ? undefined : body.overview === null ? null : asTrimmedString(body.overview)
+  const notes = body.notes === undefined ? undefined : body.notes === null ? null : asTrimmedString(body.notes)
 
   if (!db) {
     const nextMeta = mergeSeriesMeta(undefined, body)
@@ -160,6 +161,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ...(nextStatus !== undefined && { status: nextStatus }),
         ...(rating !== undefined && { rating }),
         ...(nextOverview !== undefined && { overview: nextOverview }),
+        ...(notes !== undefined && { notes }),
         seriesMeta: nextMeta,
       },
     })

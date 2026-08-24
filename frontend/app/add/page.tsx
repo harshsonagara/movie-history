@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Search, ArrowLeft } from 'lucide-react'
 import { IMG } from '@/lib/tmdb'
 
@@ -63,6 +63,19 @@ export default function AddPage() {
   const [saveError, setSaveError] = useState('')
   const [seriesDetails, setSeriesDetails] = useState<SeriesDetails | null>(null)
   const [detailsLoading, setDetailsLoading] = useState(false)
+  const [existingTmdbIds, setExistingTmdbIds] = useState<Set<number>>(new Set())
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/movies').then(r => r.json()).catch(() => []),
+      fetch('/api/series').then(r => r.json()).catch(() => []),
+    ]).then(([movies, series]) => {
+      const ids = new Set<number>()
+      if (Array.isArray(movies)) movies.forEach((m: { tmdbId: number }) => ids.add(m.tmdbId))
+      if (Array.isArray(series)) series.forEach((s: { tmdbId: number }) => ids.add(s.tmdbId))
+      setExistingTmdbIds(ids)
+    })
+  }, [])
 
   const selectedIsSeries = selected?.media_type === 'tv'
   const isSeries = manualMode ? manualType === 'series' : selectedIsSeries
@@ -320,7 +333,10 @@ export default function AddPage() {
                     : <div className="add-result-thumb">{getTitle(r)[0] ?? '?'}</div>
                   }
                   <div className="result-content">
-                    <div className="result-title">{getTitle(r)}</div>
+                    <div className="result-title">
+                      {getTitle(r)}
+                      {existingTmdbIds.has(r.id) && <span className="in-library-badge">In library</span>}
+                    </div>
                     <div className="result-meta">
                       <span className={`media-badge media-badge-${r.media_type === 'tv' ? 'series' : 'movie'}`}>
                         {r.media_type === 'tv' ? 'Series' : 'Movie'}
@@ -486,6 +502,10 @@ export default function AddPage() {
                     />
                   </div>
                 </>
+              )}
+
+              {!manualMode && selected && existingTmdbIds.has(selected.id) && (
+                <div className="form-note">Already in your library — saving will update it.</div>
               )}
 
               <div className="form-group">

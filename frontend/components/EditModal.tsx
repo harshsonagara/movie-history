@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { X } from 'lucide-react'
+import { showToast } from '@/lib/toast'
 
 export type EditTarget = {
   id: number
@@ -8,6 +9,7 @@ export type EditTarget = {
   title: string
   status: string
   rating?: number | null
+  notes?: string | null
   currentSeason?: number | null
   currentEp?: number | null
   totalEps?: number | null
@@ -22,6 +24,7 @@ export function EditModal({
 }) {
   const [status, setStatus] = useState(item.status)
   const [rating, setRating] = useState(item.rating?.toString() ?? '')
+  const [notes, setNotes] = useState(item.notes ?? '')
   const [season, setSeason] = useState(item.currentSeason?.toString() ?? '')
   const [ep, setEp] = useState(item.currentEp?.toString() ?? '')
   const [totalEp, setTotalEp] = useState(item.totalEps?.toString() ?? '')
@@ -31,6 +34,7 @@ export function EditModal({
     setSaving(true)
     const patch: Record<string, unknown> = { status }
     patch.rating = rating !== '' ? parseFloat(rating) : null
+    patch.notes = notes.trim() || null
     if (item.type === 'series') {
       patch.currentSeason = season !== '' ? parseInt(season) : null
       patch.currentEp = ep !== '' ? parseInt(ep) : null
@@ -43,7 +47,12 @@ export function EditModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patch),
       })
-      if (res.ok) onSave(patch as Partial<EditTarget>)
+      if (res.ok) {
+        showToast('Saved!')
+        onSave(patch as Partial<EditTarget>)
+      } else {
+        showToast('Save failed', 'error')
+      }
     } finally {
       setSaving(false)
     }
@@ -84,6 +93,16 @@ export function EditModal({
             placeholder="Leave blank to clear"
             value={rating}
             onChange={e => setRating(e.target.value)}
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Your Notes</label>
+          <textarea
+            rows={3}
+            placeholder="e.g. Great ending, quit at ep 3…"
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
           />
         </div>
 

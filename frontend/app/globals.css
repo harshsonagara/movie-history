@@ -1403,34 +1403,60 @@ label {
 
 .chip-btn {
   border: 1px solid var(--border);
-  background: var(--card-alt);
+  background: transparent;
   color: var(--muted);
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   line-height: 1;
-  padding: 5px 8px;
+  padding: 5px 10px;
   cursor: pointer;
   transition: all 0.12s;
+  white-space: nowrap;
 }
 
 .chip-btn:hover {
   color: var(--text);
-  border-color: var(--gold-border);
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
 }
 
+/* Watchlist active — gold (it's the "plan to watch" action) */
 .chip-btn-active {
   color: var(--gold);
   border-color: var(--gold-border);
   background: var(--gold-dim);
 }
 
+/* Watching active — blue */
+.chip-watching.chip-btn-active {
+  color: var(--blue);
+  border-color: rgba(74, 158, 255, 0.35);
+  background: rgba(74, 158, 255, 0.1);
+}
+
+/* Watched / Completed active — teal */
+.chip-watched.chip-btn-active,
+.chip-completed.chip-btn-active {
+  color: var(--teal);
+  border-color: rgba(0, 212, 170, 0.35);
+  background: rgba(0, 212, 170, 0.08);
+}
+
+/* +1 Ep always visible in blue */
 .chip-btn-continue {
   color: var(--blue);
+  border-color: rgba(74, 158, 255, 0.25);
+  background: rgba(74, 158, 255, 0.07);
+}
+
+.chip-btn-continue:hover {
+  border-color: rgba(74, 158, 255, 0.5);
+  background: rgba(74, 158, 255, 0.15);
 }
 
 .chip-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -1733,4 +1759,72 @@ label {
 .password-eye-btn:hover {
   border-color: var(--gold-border);
   background: var(--gold-dim);
+}
+
+/* ── Toast notifications ──────────────────── */
+.toaster {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  padding: 11px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  animation: toast-in 0.18s ease;
+}
+
+.toast-success {
+  background: var(--card-alt);
+  border: 1px solid var(--teal);
+  color: var(--teal);
+}
+
+.toast-error {
+  background: var(--card-alt);
+  border: 1px solid #ff6b6b;
+  color: #ff6b6b;
+}
+
+@keyframes toast-in {
+  from { transform: translateX(16px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* ── Episode progress line (series cards) ─── */
+.ep-progress-line {
+  font-size: 11px;
+  color: var(--blue);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* ── In-library badge (add page) ─────────── */
+.in-library-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0, 212, 170, 0.12);
+  color: var(--teal);
+  margin-left: 6px;
+}
+
+/* ── Form info note ──────────────────────── */
+.form-note {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 14px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(232, 160, 32, 0.07);
+  border: 1px solid var(--gold-border);
 }

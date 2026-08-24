@@ -11,6 +11,7 @@ type DetailsItem = {
     genre?: string | null
     rating?: number | null
     status?: string | null
+    notes?: string | null
     overview?: string | null
     runtime?: number | null
     currentSeason?: number | null
@@ -82,6 +83,15 @@ export function DetailsModal({ item, onClose }: { item: DetailsItem; onClose: ()
                         {item.overview?.trim() ? item.overview : 'No description added yet.'}
                     </div>
                 </div>
+
+                {item.notes?.trim() && (
+                    <div className="details-overview-wrap" style={{ marginTop: 12 }}>
+                        <div className="details-overview-title">Your Notes</div>
+                        <div className="details-overview-scroll" style={{ color: 'var(--gold)', fontStyle: 'italic' }}>
+                            {item.notes}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     )

@@ -5,12 +5,14 @@ import { Pencil, Trash2 } from 'lucide-react'
 import { Poster } from '@/components/Poster'
 import { EditModal, type EditTarget } from '@/components/EditModal'
 import { DetailsModal } from '@/components/DetailsModal'
+import { showToast } from '@/lib/toast'
 
 type Series = {
   id: number; tmdbId: number; title: string; year?: number | null
   rating?: number | null; genre?: string | null; status: string
   poster?: string | null; currentSeason?: number | null
   currentEp?: number | null; totalEps?: number | null; overview?: string | null
+  notes?: string | null
 }
 
 const SECTIONS = [
@@ -38,6 +40,7 @@ export default function SeriesPage() {
     if (!confirm(`Remove "${s.title}" from your library?`)) return
     setSeries(prev => prev.filter(x => x.id !== s.id))
     await fetch(`/api/series/${s.id}`, { method: 'DELETE' })
+    showToast(`"${s.title}" removed`)
   }
 
   function onSaved(id: number, patch: Partial<EditTarget>) {
@@ -144,7 +147,7 @@ export default function SeriesPage() {
                             e.stopPropagation()
                             setEditing({
                               id: s.id, type: 'series', title: s.title, status: s.status,
-                              rating: s.rating, currentSeason: s.currentSeason, currentEp: s.currentEp, totalEps: s.totalEps,
+                              rating: s.rating, notes: s.notes, currentSeason: s.currentSeason, currentEp: s.currentEp, totalEps: s.totalEps,
                             })
                           }}
                         >
@@ -164,52 +167,39 @@ export default function SeriesPage() {
                     </div>
                     <div className="movie-title card-open-surface" onClick={() => setViewing(s)}>{s.title}</div>
                     <div className="movie-meta card-open-surface" onClick={() => setViewing(s)}>
-                      {s.year}
-                      {s.currentSeason != null && (
-                        <span className="ml-1">S{s.currentSeason}E{s.currentEp ?? '?'}</span>
-                      )}
-                      {s.currentEp != null && s.totalEps != null && (
-                        <span className="ml-1">({s.currentEp}/{s.totalEps})</span>
-                      )}
-                      {s.rating != null && <span className="rating-star ml-1">★{s.rating}</span>}
+                      {s.year}{s.rating != null && <span className="rating-star ml-1">★{s.rating}</span>}
                     </div>
+                    {s.status === 'watching' && s.currentSeason != null && (
+                      <div className="ep-progress-line card-open-surface" onClick={() => setViewing(s)}>
+                        S{s.currentSeason} · E{s.currentEp ?? '?'}
+                        {s.totalEps != null ? ` / ${s.totalEps}` : ''}
+                      </div>
+                    )}
                     <div className="card-quick-actions">
                       <button
-                        className={`chip-btn ${s.status === 'watching' ? 'chip-btn-active' : ''}`}
-                        onClick={e => {
-                          e.stopPropagation()
-                          quickSetStatus(s, 'watching')
-                        }}
+                        className={`chip-btn chip-watching ${s.status === 'watching' ? 'chip-btn-active' : ''}`}
+                        onClick={e => { e.stopPropagation(); quickSetStatus(s, 'watching') }}
                         disabled={updatingId === s.id}
                       >
                         Watching
                       </button>
                       <button
                         className={`chip-btn ${s.status === 'watchlist' ? 'chip-btn-active' : ''}`}
-                        onClick={e => {
-                          e.stopPropagation()
-                          quickSetStatus(s, 'watchlist')
-                        }}
+                        onClick={e => { e.stopPropagation(); quickSetStatus(s, 'watchlist') }}
                         disabled={updatingId === s.id}
                       >
                         Watchlist
                       </button>
                       <button
-                        className={`chip-btn ${s.status === 'completed' ? 'chip-btn-active' : ''}`}
-                        onClick={e => {
-                          e.stopPropagation()
-                          quickSetStatus(s, 'completed')
-                        }}
+                        className={`chip-btn chip-completed ${s.status === 'completed' ? 'chip-btn-active' : ''}`}
+                        onClick={e => { e.stopPropagation(); quickSetStatus(s, 'completed') }}
                         disabled={updatingId === s.id}
                       >
                         Completed
                       </button>
                       <button
                         className="chip-btn chip-btn-continue"
-                        onClick={e => {
-                          e.stopPropagation()
-                          quickContinue(s)
-                        }}
+                        onClick={e => { e.stopPropagation(); quickContinue(s) }}
                         disabled={updatingId === s.id}
                       >
                         +1 Ep
@@ -245,6 +235,7 @@ export default function SeriesPage() {
             currentEp: viewing.currentEp,
             totalEps: viewing.totalEps,
             overview: viewing.overview,
+            notes: viewing.notes,
           }}
           onClose={() => setViewing(null)}
         />

@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { addFallbackHistory, deleteFallbackMovie, updateFallbackMovie } from '@/lib/fallback-store'
 import { getCurrentUserId } from '@/lib/auth-user'
-import { asInt, asNullableNumber, limitRequest, parseJsonObjectBody, validateStatus } from '@/lib/api-guard'
+import { asInt, asNullableNumber, asTrimmedString, limitRequest, parseJsonObjectBody, validateStatus } from '@/lib/api-guard'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const rateLimited = limitRequest(req, 'movies-patch', { windowMs: 60_000, max: 80 })
@@ -27,6 +27,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
   const rating = asNullableNumber(body.rating)
   const progress = asNullableNumber(body.progress)
+  const notes = body.notes === undefined ? undefined : body.notes === null ? null : asTrimmedString(body.notes)
   if (rating !== undefined && rating !== null && (rating < 0 || rating > 10)) {
     return Response.json({ error: 'rating must be between 0 and 10' }, { status: 400 })
   }
@@ -61,6 +62,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ...(status !== undefined && { status }),
         ...(rating !== undefined && { rating }),
         ...(progress !== undefined && { progress }),
+        ...(notes !== undefined && { notes }),
       },
     })
     // Log to history when marked as watched

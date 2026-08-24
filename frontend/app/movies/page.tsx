@@ -5,11 +5,13 @@ import { Pencil, Trash2 } from 'lucide-react'
 import { Poster } from '@/components/Poster'
 import { EditModal, type EditTarget } from '@/components/EditModal'
 import { DetailsModal } from '@/components/DetailsModal'
+import { showToast } from '@/lib/toast'
 
 type Movie = {
   id: number; tmdbId: number; title: string; year?: number | null
   rating?: number | null; genre?: string | null; status: string
   poster?: string | null; runtime?: number | null; overview?: string | null
+  notes?: string | null
 }
 
 const SECTIONS = [
@@ -37,6 +39,7 @@ export default function MoviesPage() {
     if (!confirm(`Remove "${m.title}" from your library?`)) return
     setMovies(prev => prev.filter(x => x.id !== m.id))
     await fetch(`/api/movies/${m.id}`, { method: 'DELETE' })
+    showToast(`"${m.title}" removed`)
   }
 
   function onSaved(id: number, patch: Partial<EditTarget>) {
@@ -114,7 +117,7 @@ export default function MoviesPage() {
                         title="Edit"
                         onClick={e => {
                           e.stopPropagation()
-                          setEditing({ id: m.id, type: 'movie', title: m.title, status: m.status, rating: m.rating })
+                          setEditing({ id: m.id, type: 'movie', title: m.title, status: m.status, rating: m.rating, notes: m.notes })
                         }}
                       >
                         <Pencil size={12} />
@@ -137,31 +140,22 @@ export default function MoviesPage() {
                   </div>
                   <div className="card-quick-actions">
                     <button
-                      className={`chip-btn ${m.status === 'watching' ? 'chip-btn-active' : ''}`}
-                      onClick={e => {
-                        e.stopPropagation()
-                        quickSetStatus(m, 'watching')
-                      }}
+                      className={`chip-btn chip-watching ${m.status === 'watching' ? 'chip-btn-active' : ''}`}
+                      onClick={e => { e.stopPropagation(); quickSetStatus(m, 'watching') }}
                       disabled={updatingId === m.id}
                     >
                       Watching
                     </button>
                     <button
                       className={`chip-btn ${m.status === 'watchlist' ? 'chip-btn-active' : ''}`}
-                      onClick={e => {
-                        e.stopPropagation()
-                        quickSetStatus(m, 'watchlist')
-                      }}
+                      onClick={e => { e.stopPropagation(); quickSetStatus(m, 'watchlist') }}
                       disabled={updatingId === m.id}
                     >
                       Watchlist
                     </button>
                     <button
-                      className={`chip-btn ${m.status === 'watched' ? 'chip-btn-active' : ''}`}
-                      onClick={e => {
-                        e.stopPropagation()
-                        quickSetStatus(m, 'watched')
-                      }}
+                      className={`chip-btn chip-watched ${m.status === 'watched' ? 'chip-btn-active' : ''}`}
+                      onClick={e => { e.stopPropagation(); quickSetStatus(m, 'watched') }}
                       disabled={updatingId === m.id}
                     >
                       Watched
@@ -194,6 +188,7 @@ export default function MoviesPage() {
             status: viewing.status,
             runtime: viewing.runtime,
             overview: viewing.overview,
+            notes: viewing.notes,
           }}
           onClose={() => setViewing(null)}
         />

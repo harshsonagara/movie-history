@@ -20,6 +20,7 @@ model Movie {
   director  String?
   overview  String?
   status    String   @default("watched") // watched | watching | watchlist
+  notes     String?
   progress  Int?
   watchedAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -40,6 +41,7 @@ model Series {
   rating     Float?
   overview   String?
   status     String   @default("watching") // watching | completed | watchlist
+  notes      String?
   seriesMeta Json?
   updatedAt  DateTime @updatedAt
 
