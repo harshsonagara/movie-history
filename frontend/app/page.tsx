@@ -138,7 +138,7 @@ export default async function Dashboard() {
       )}
 
       {/* Activity + Up Next */}
-      <div className="two-col">
+      {/* <div className="two-col">
         <div className="card">
           <div className="section-row mb-4">
             <h3 className="section-title-sm">Recent Activity</h3>
@@ -202,10 +202,10 @@ export default async function Dashboard() {
             View Watchlist →
           </Link>
         </div>
-      </div>
+      </div> */}
 
       {/* Trending Recommendations */}
-      {trending.length > 0 && (
+      {/* {trending.length > 0 && (
         <div className="section">
           <div className="section-row">
             <div>
@@ -239,7 +239,7 @@ export default async function Dashboard() {
             })}
           </div>
         </div>
-      )}
+      )} */}
     </>
   )
 }
