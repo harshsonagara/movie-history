@@ -49,6 +49,21 @@ export async function POST(req: NextRequest) {
             if (error.code === 'P2021') {
                 return Response.json({ error: 'Database schema is out of date. Run migrations.' }, { status: 503 })
             }
+            if (error.code === 'P1001' || error.code === 'P1002') {
+                return Response.json({ error: 'Database connection failed. Check DATABASE_URL and SSL settings.' }, { status: 503 })
+            }
+        }
+        if (error instanceof Prisma.PrismaClientInitializationError) {
+            return Response.json({ error: 'Database initialization failed. Check DATABASE_URL and SSL settings.' }, { status: 503 })
+        }
+        if (error instanceof Error) {
+            const msg = error.message.toLowerCase()
+            if (msg.includes('relation') && msg.includes('does not exist')) {
+                return Response.json({ error: 'Database schema is out of date. Run migrations.' }, { status: 503 })
+            }
+            if (msg.includes('connect') || msg.includes('timeout') || msg.includes('ssl') || msg.includes('certificate')) {
+                return Response.json({ error: 'Database connection failed. Check DATABASE_URL and SSL settings.' }, { status: 503 })
+            }
         }
         console.error('Signup failed', error)
         return Response.json({ error: 'Unable to create account right now' }, { status: 500 })
