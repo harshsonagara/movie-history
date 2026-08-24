@@ -32,6 +32,10 @@ export async function getTVDetails(id: number) {
   return tmdb(`/tv/${id}`, { language: 'en-US' })
 }
 
+export async function getTVSeasonDetails(id: number, seasonNumber: number) {
+  return tmdb(`/tv/${id}/season/${seasonNumber}`, { language: 'en-US' })
+}
+
 export async function discoverMovies(params: Record<string, string> = {}) {
   return tmdb('/discover/movie', { language: 'en-US', sort_by: 'popularity.desc', ...params })
 }

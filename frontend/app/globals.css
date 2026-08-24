@@ -165,6 +165,20 @@ body {
   background: var(--gold-dim);
 }
 
+.sidebar-logout-btn {
+  width: auto;
+  min-width: 88px;
+  padding: 0 10px;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sidebar-logout-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .user-avatar {
   width: 36px;
   height: 36px;

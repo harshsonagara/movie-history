@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
@@ -24,6 +25,13 @@ const NAV = [
 export default function Sidebar() {
   const pathname = usePathname()
   const { data: session } = useSession()
+  const [signingOut, setSigningOut] = useState(false)
+
+  async function handleLogout() {
+    if (signingOut) return
+    setSigningOut(true)
+    await signOut({ callbackUrl: '/login' })
+  }
 
   if (pathname.startsWith('/login') || pathname.startsWith('/signup')) {
     return null
@@ -66,12 +74,14 @@ export default function Sidebar() {
           <div className="user-sub">{session?.user?.email ?? 'Signed in'}</div>
         </div>
         <button
-          className="sidebar-logout"
-          onClick={() => signOut({ callbackUrl: '/login' })}
+          className="sidebar-logout sidebar-logout-btn"
+          onClick={handleLogout}
           title="Logout"
           aria-label="Logout"
+          disabled={signingOut}
         >
           <LogOut size={14} />
+          <span>{signingOut ? 'Logging out…' : 'Logout'}</span>
         </button>
       </div>
     </aside>

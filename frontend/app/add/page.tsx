@@ -16,6 +16,14 @@ type Result = {
   overview?: string
 }
 
+type SeriesDetails = {
+  overview?: string | null
+  genres?: string[]
+  totalSeasons?: number | null
+  totalEpisodes?: number | null
+  perSeasonEpisodes?: { season: number; episodes: number }[]
+}
+
 const MOVIE_STATUSES = [
   { value: 'watched', label: 'Watched' },
   { value: 'watching', label: 'Currently Watching' },
@@ -53,6 +61,8 @@ export default function AddPage() {
   const [saved, setSaved] = useState(false)
   const [savedTitle, setSavedTitle] = useState('')
   const [saveError, setSaveError] = useState('')
+  const [seriesDetails, setSeriesDetails] = useState<SeriesDetails | null>(null)
+  const [detailsLoading, setDetailsLoading] = useState(false)
 
   const selectedIsSeries = selected?.media_type === 'tv'
   const isSeries = manualMode ? manualType === 'series' : selectedIsSeries
@@ -72,6 +82,30 @@ export default function AddPage() {
 
   const getTitle = (r: Result) => r.title ?? r.name ?? ''
   const getYear = (r: Result) => (r.release_date ?? r.first_air_date ?? '').slice(0, 4)
+
+  const toPerSeasonText = (rows: { season: number; episodes: number }[]) => {
+    return rows.map(row => `S${row.season}:${row.episodes}`).join(', ')
+  }
+
+  const loadSeriesDetails = useCallback(async (id: number) => {
+    setDetailsLoading(true)
+    setSeriesDetails(null)
+    try {
+      const res = await fetch(`/api/tmdb/series/${id}`)
+      if (!res.ok) return
+      const data = await res.json() as SeriesDetails
+      setSeriesDetails(data)
+
+      if (data.totalSeasons != null) setTotalSeasons(String(data.totalSeasons))
+      if (Array.isArray(data.perSeasonEpisodes) && data.perSeasonEpisodes.length) {
+        setPerSeasonEpisodesText(toPerSeasonText(data.perSeasonEpisodes))
+      }
+    } catch {
+      setSeriesDetails(null)
+    } finally {
+      setDetailsLoading(false)
+    }
+  }, [])
 
   const parsePerSeasonEpisodes = (text: string) => {
     const chunks = text.split(',').map(s => s.trim()).filter(Boolean)
@@ -128,7 +162,8 @@ export default function AddPage() {
           title: getTitle(selected!),
           poster: selected!.poster_path ?? null,
           year: getYear(selected!) ? parseInt(getYear(selected!)) : null,
-          overview: selected!.overview ?? null,
+          overview: seriesDetails?.overview ?? selected!.overview ?? null,
+          genre: isSeries ? (seriesDetails?.genres?.join(', ') ?? null) : null,
           rating: rating ? parseFloat(rating) : null,
           status,
           totalSeasons: isSeries && totalSeasons ? parseInt(totalSeasons) : null,
@@ -268,11 +303,15 @@ export default function AddPage() {
                   onClick={() => {
                     setSelected(r)
                     setStatus(r.media_type === 'tv' ? 'watching' : 'watched')
+                    setSeriesDetails(null)
                     setTotalSeasons('')
                     setPerSeasonEpisodesText('')
                     setSeason('')
                     setEpisode('')
                     setCurrentEpisodeNote('')
+                    if (r.media_type === 'tv') {
+                      loadSeriesDetails(r.id)
+                    }
                   }}
                 >
                   {r.poster_path
@@ -328,7 +367,16 @@ export default function AddPage() {
                       {selected.vote_average ? ` · ★${selected.vote_average.toFixed(1)}` : ''}
                     </div>
                     {selected.overview && (
-                      <div className="add-detail-overview">{selected.overview}</div>
+                      <div className="add-detail-overview">{seriesDetails?.overview ?? selected.overview}</div>
+                    )}
+                    {isSeries && (
+                      <div className="add-detail-overview">
+                        {detailsLoading
+                          ? 'Loading full season details from TMDB…'
+                          : seriesDetails?.totalSeasons != null
+                            ? `${seriesDetails.totalSeasons} seasons${seriesDetails.totalEpisodes != null ? ` · ${seriesDetails.totalEpisodes} episodes` : ''}`
+                            : ''}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -483,7 +531,7 @@ export default function AddPage() {
                       rows={2}
                       value={perSeasonEpisodesText}
                       onChange={e => setPerSeasonEpisodesText(e.target.value)}
-                      placeholder="Format: S1:8, S2:10, S3:12"
+                      placeholder="Format: S1:8, S2:10, S3:12 (auto-filled from TMDB when available)"
                     />
                   </div>
                 </>
