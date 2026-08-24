@@ -23,6 +23,7 @@ type MovieItem = {
     runtime: number | null
     director: string | null
     overview: string | null
+    notes: string | null
     status: MediaStatusMovie
     progress: number | null
     watchedAt: Date
@@ -38,6 +39,7 @@ type SeriesItem = {
     genre: string | null
     rating: number | null
     overview: string | null
+    notes: string | null
     status: MediaStatusSeries
     seriesMeta: SeriesMeta | null
     currentSeason: number | null
@@ -100,6 +102,7 @@ export function upsertFallbackMovie(input: {
     runtime?: number | null
     director?: string | null
     overview?: string | null
+    notes?: string | null
     status?: string
 }): MovieItem {
     const now = new Date()
@@ -114,6 +117,7 @@ export function upsertFallbackMovie(input: {
             ...movies[idx],
             status,
             rating: input.rating ?? movies[idx].rating,
+            notes: input.notes ?? movies[idx].notes,
             updatedAt: now,
             watchedAt: now,
         }
@@ -131,6 +135,7 @@ export function upsertFallbackMovie(input: {
         runtime: input.runtime ?? null,
         director: input.director ?? null,
         overview: input.overview ?? null,
+        notes: input.notes ?? null,
         status,
         progress: null,
         watchedAt: now,
@@ -144,6 +149,7 @@ export function updateFallbackMovie(id: number, patch: {
     status?: string
     rating?: number | null
     progress?: number | null
+    notes?: string | null
 }): MovieItem | null {
     const idx = movies.findIndex(m => m.id === id)
     if (idx < 0) return null
@@ -158,6 +164,7 @@ export function updateFallbackMovie(id: number, patch: {
         ...(status !== undefined ? { status } : {}),
         ...(patch.rating !== undefined ? { rating: patch.rating } : {}),
         ...(patch.progress !== undefined ? { progress: patch.progress } : {}),
+        ...(patch.notes !== undefined ? { notes: patch.notes } : {}),
         updatedAt: new Date(),
     }
     return movies[idx]
@@ -177,6 +184,7 @@ export function upsertFallbackSeries(input: {
     genre?: string | null
     rating?: number | null
     overview?: string | null
+    notes?: string | null
     seriesMeta?: SeriesMeta | null
     status?: string
     currentSeason?: number | null
@@ -196,6 +204,7 @@ export function upsertFallbackSeries(input: {
             ...series[idx],
             status,
             rating: input.rating ?? series[idx].rating,
+            notes: input.notes ?? series[idx].notes,
             seriesMeta: nextMeta,
             currentSeason: input.currentSeason ?? series[idx].currentSeason,
             currentEp: input.currentEp ?? series[idx].currentEp,
@@ -214,6 +223,7 @@ export function upsertFallbackSeries(input: {
         genre: input.genre ?? null,
         rating: input.rating ?? null,
         overview: input.overview ?? null,
+        notes: input.notes ?? null,
         status,
         seriesMeta: input.seriesMeta ?? null,
         currentSeason: input.currentSeason ?? null,
@@ -228,6 +238,7 @@ export function upsertFallbackSeries(input: {
 export function updateFallbackSeries(id: number, patch: {
     status?: string
     rating?: number | null
+    notes?: string | null
     seriesMeta?: SeriesMeta | null
     currentSeason?: number | null
     currentEp?: number | null
@@ -245,6 +256,7 @@ export function updateFallbackSeries(id: number, patch: {
         ...series[idx],
         ...(status !== undefined ? { status } : {}),
         ...(patch.rating !== undefined ? { rating: patch.rating } : {}),
+        ...(patch.notes !== undefined ? { notes: patch.notes } : {}),
         ...(patch.seriesMeta !== undefined ? { seriesMeta: patch.seriesMeta } : {}),
         ...(patch.currentSeason !== undefined ? { currentSeason: patch.currentSeason } : {}),
         ...(patch.currentEp !== undefined ? { currentEp: patch.currentEp } : {}),

@@ -37,6 +37,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       status,
       rating,
       progress,
+      notes,
     })
     if (!movie) return Response.json({ error: 'Not found' }, { status: 404 })
     if (body.status === 'watched') {

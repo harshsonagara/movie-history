@@ -117,6 +117,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const s = updateFallbackSeries(seriesId, {
       status,
       rating,
+      notes,
       seriesMeta: nextMeta,
       currentSeason: compat.currentSeason,
       currentEp: compat.currentEp,
