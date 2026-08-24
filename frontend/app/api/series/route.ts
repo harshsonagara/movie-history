@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { addFallbackHistory, getFallbackSeries, upsertFallbackSeries } from '@/lib/fallback-store'
 import { getCurrentUserId } from '@/lib/auth-user'
+import { asNullableNumber, asNumber, asTrimmedString, limitRequest, parseJsonObjectBody, validateStatus } from '@/lib/api-guard'
 
 type SeriesMeta = {
   totalSeasons?: number | null
@@ -79,21 +80,44 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const rateLimited = limitRequest(req, 'series-post', { windowMs: 60_000, max: 40 })
+  if (rateLimited) return rateLimited
+
   const userId = await getCurrentUserId()
   if (!userId) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await req.json() as Record<string, unknown>
+  const parsed = await parseJsonObjectBody(req)
+  if (!parsed.ok) return parsed.response
+  const body = parsed.body
+
+  const tmdbId = asNumber(body.tmdbId)
+  const title = asTrimmedString(body.title)
+  if (!tmdbId || tmdbId <= 0 || !title) {
+    return Response.json({ error: 'tmdbId and title are required' }, { status: 400 })
+  }
+
+  const rating = asNullableNumber(body.rating)
+  if (rating !== undefined && rating !== null && (rating < 0 || rating > 10)) {
+    return Response.json({ error: 'rating must be between 0 and 10' }, { status: 400 })
+  }
+
+  const status = validateStatus(body.status, ['watching', 'watchlist', 'completed']) ?? 'watching'
+  const poster = body.poster === null ? null : asTrimmedString(body.poster)
+  const genre = body.genre === null ? null : asTrimmedString(body.genre)
+  const overview = body.overview === null ? null : asTrimmedString(body.overview)
+  const year = asNullableNumber(body.year)
+
   const meta = buildSeriesMeta(body)
   const compat = extractCompat(meta)
   if (!db) {
     const s = upsertFallbackSeries({
-      tmdbId: Number(body.tmdbId),
-      title: String(body.title ?? ''),
-      poster: (body.poster as string | null | undefined) ?? null,
-      year: numOrNull(body.year),
-      genre: (body.genre as string | null | undefined) ?? null,
-      rating: numOrNull(body.rating),
-      overview: (body.overview as string | null | undefined) ?? null,
-      status: (body.status as string | undefined) ?? 'watching',
+      tmdbId,
+      title,
+      poster: poster ?? null,
+      year: year ?? null,
+      genre: genre ?? null,
+      rating: rating ?? null,
+      overview: overview ?? null,
+      status,
       seriesMeta: meta,
       currentSeason: compat.currentSeason,
       currentEp: compat.currentEp,
@@ -114,24 +138,24 @@ export async function POST(req: NextRequest) {
   }
   try {
     const s = await db.series.upsert({
-      where: { userId_tmdbId: { userId, tmdbId: Number(body.tmdbId) } },
+      where: { userId_tmdbId: { userId, tmdbId } },
       update: {
-        status: (body.status as string | undefined) ?? 'watching',
-        rating: numOrNull(body.rating),
-        genre: (body.genre as string | null | undefined) ?? undefined,
-        overview: (body.overview as string | null | undefined) ?? undefined,
+        status,
+        rating: rating ?? null,
+        genre: genre ?? undefined,
+        overview: overview ?? undefined,
         seriesMeta: meta,
       },
       create: {
-        tmdbId: Number(body.tmdbId),
+        tmdbId,
         userId,
-        title: String(body.title ?? ''),
-        poster: (body.poster as string | null | undefined) ?? null,
-        year: numOrNull(body.year),
-        genre: (body.genre as string | null | undefined) ?? null,
-        rating: numOrNull(body.rating),
-        overview: (body.overview as string | null | undefined) ?? null,
-        status: (body.status as string | undefined) ?? 'watching',
+        title,
+        poster: poster ?? null,
+        year: year ?? null,
+        genre: genre ?? null,
+        rating: rating ?? null,
+        overview: overview ?? null,
+        status,
         seriesMeta: meta,
       },
     })

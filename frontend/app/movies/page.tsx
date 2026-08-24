@@ -23,6 +23,7 @@ export default function MoviesPage() {
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<EditTarget | null>(null)
   const [viewing, setViewing] = useState<Movie | null>(null)
+  const [updatingId, setUpdatingId] = useState<number | null>(null)
 
   useEffect(() => {
     fetch('/api/movies')
@@ -41,6 +42,24 @@ export default function MoviesPage() {
   function onSaved(id: number, patch: Partial<EditTarget>) {
     setMovies(prev => prev.map(m => m.id === id ? { ...m, ...patch } : m))
     setEditing(null)
+  }
+
+  async function quickSetStatus(m: Movie, status: Movie['status']) {
+    const prevStatus = m.status
+    if (prevStatus === status) return
+
+    setUpdatingId(m.id)
+    setMovies(prev => prev.map(x => x.id === m.id ? { ...x, status } : x))
+    const res = await fetch(`/api/movies/${m.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    }).catch(() => null)
+
+    if (!res?.ok) {
+      setMovies(prev => prev.map(x => x.id === m.id ? { ...x, status: prevStatus } : x))
+    }
+    setUpdatingId(null)
   }
 
   const watched = movies.filter(m => m.status === 'watched').length
@@ -115,6 +134,38 @@ export default function MoviesPage() {
                   <div className="movie-title card-open-surface" onClick={() => setViewing(m)}>{m.title}</div>
                   <div className="movie-meta card-open-surface" onClick={() => setViewing(m)}>
                     {m.year} {m.rating != null && <span className="rating-star">★{m.rating}</span>}
+                  </div>
+                  <div className="card-quick-actions">
+                    <button
+                      className={`chip-btn ${m.status === 'watching' ? 'chip-btn-active' : ''}`}
+                      onClick={e => {
+                        e.stopPropagation()
+                        quickSetStatus(m, 'watching')
+                      }}
+                      disabled={updatingId === m.id}
+                    >
+                      Watching
+                    </button>
+                    <button
+                      className={`chip-btn ${m.status === 'watchlist' ? 'chip-btn-active' : ''}`}
+                      onClick={e => {
+                        e.stopPropagation()
+                        quickSetStatus(m, 'watchlist')
+                      }}
+                      disabled={updatingId === m.id}
+                    >
+                      Watchlist
+                    </button>
+                    <button
+                      className={`chip-btn ${m.status === 'watched' ? 'chip-btn-active' : ''}`}
+                      onClick={e => {
+                        e.stopPropagation()
+                        quickSetStatus(m, 'watched')
+                      }}
+                      disabled={updatingId === m.id}
+                    >
+                      Watched
+                    </button>
                   </div>
                 </div>
               ))}

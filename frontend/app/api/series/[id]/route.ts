@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { addFallbackHistory, deleteFallbackSeries, updateFallbackSeries } from '@/lib/fallback-store'
 import { getCurrentUserId } from '@/lib/auth-user'
+import { asInt, asNullableNumber, asTrimmedString, limitRequest, parseJsonObjectBody, validateStatus } from '@/lib/api-guard'
 
 type SeriesMeta = {
   totalSeasons?: number | null
@@ -82,16 +83,39 @@ function toSeriesResponse<T extends { seriesMeta?: unknown }>(series: T) {
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const rateLimited = limitRequest(req, 'series-patch', { windowMs: 60_000, max: 80 })
+  if (rateLimited) return rateLimited
+
   const userId = await getCurrentUserId()
   if (!userId) return Response.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
-  const body = await req.json() as Record<string, unknown>
+  const seriesId = asInt(id)
+  if (!seriesId || seriesId <= 0) return Response.json({ error: 'Invalid id' }, { status: 400 })
+
+  const parsed = await parseJsonObjectBody(req)
+  if (!parsed.ok) return parsed.response
+  const body = parsed.body
+
+  let status: string | undefined
+  if (body.status !== undefined) {
+    const nextStatus = validateStatus(body.status, ['watching', 'watchlist', 'completed'])
+    if (!nextStatus) {
+      return Response.json({ error: 'Invalid status' }, { status: 400 })
+    }
+    status = nextStatus
+  }
+  const rating = asNullableNumber(body.rating)
+  if (rating !== undefined && rating !== null && (rating < 0 || rating > 10)) {
+    return Response.json({ error: 'rating must be between 0 and 10' }, { status: 400 })
+  }
+  const nextOverview = body.overview === undefined ? undefined : body.overview === null ? null : asTrimmedString(body.overview)
+
   if (!db) {
     const nextMeta = mergeSeriesMeta(undefined, body)
     const compat = extractCompat(nextMeta)
-    const s = updateFallbackSeries(parseInt(id), {
-      status: body.status as string | undefined,
-      rating: body.rating === undefined ? undefined : numOrNull(body.rating),
+    const s = updateFallbackSeries(seriesId, {
+      status,
+      rating,
       seriesMeta: nextMeta,
       currentSeason: compat.currentSeason,
       currentEp: compat.currentEp,
@@ -123,20 +147,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return Response.json(toSeriesResponse(s))
   }
   try {
-    const seriesId = parseInt(id)
     const existing = await db.series.findFirst({ where: { id: seriesId, userId } })
     if (!existing) return Response.json({ error: 'Not found' }, { status: 404 })
 
     const currentMeta = (existing.seriesMeta as SeriesMeta | null | undefined) ?? null
     const nextMeta = mergeSeriesMeta(currentMeta, body)
-    const nextStatus = typeof body.status === 'string' ? body.status : undefined
+    const nextStatus = status
 
     const s = await db.series.update({
       where: { id: seriesId },
       data: {
         ...(nextStatus !== undefined && { status: nextStatus }),
-        ...(body.rating !== undefined && { rating: numOrNull(body.rating) }),
-        ...(body.overview !== undefined && { overview: body.overview as string | null }),
+        ...(rating !== undefined && { rating }),
+        ...(nextOverview !== undefined && { overview: nextOverview }),
         seriesMeta: nextMeta,
       },
     })
@@ -173,16 +196,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const rateLimited = limitRequest(_req, 'series-delete', { windowMs: 60_000, max: 40 })
+  if (rateLimited) return rateLimited
+
   const userId = await getCurrentUserId()
   if (!userId) return Response.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
+  const seriesId = asInt(id)
+  if (!seriesId || seriesId <= 0) return Response.json({ error: 'Invalid id' }, { status: 400 })
+
   if (!db) {
-    const ok = deleteFallbackSeries(parseInt(id))
+    const ok = deleteFallbackSeries(seriesId)
     if (!ok) return Response.json({ error: 'Not found' }, { status: 404 })
     return new Response(null, { status: 204 })
   }
   try {
-    const seriesId = parseInt(id)
     const result = await db.series.deleteMany({ where: { id: seriesId, userId } })
     if (result.count === 0) return Response.json({ error: 'Not found' }, { status: 404 })
     return new Response(null, { status: 204 })

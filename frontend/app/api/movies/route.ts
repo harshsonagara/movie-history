@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { addFallbackHistory, getFallbackMovies, upsertFallbackMovie } from '@/lib/fallback-store'
 import { getCurrentUserId } from '@/lib/auth-user'
+import { asNullableNumber, asNumber, asTrimmedString, limitRequest, parseJsonObjectBody, validateStatus } from '@/lib/api-guard'
 
 export async function GET() {
   const userId = await getCurrentUserId()
@@ -16,21 +17,46 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const rateLimited = limitRequest(req, 'movies-post', { windowMs: 60_000, max: 40 })
+  if (rateLimited) return rateLimited
+
   const userId = await getCurrentUserId()
   if (!userId) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await req.json()
+
+  const parsed = await parseJsonObjectBody(req)
+  if (!parsed.ok) return parsed.response
+  const body = parsed.body
+
+  const tmdbId = asNumber(body.tmdbId)
+  const title = asTrimmedString(body.title)
+  const status = validateStatus(body.status, ['watched', 'watching', 'watchlist']) ?? 'watched'
+  const rating = asNullableNumber(body.rating)
+  const year = asNullableNumber(body.year)
+  const runtime = asNullableNumber(body.runtime)
+  const poster = body.poster === null ? null : asTrimmedString(body.poster)
+  const genre = body.genre === null ? null : asTrimmedString(body.genre)
+  const director = body.director === null ? null : asTrimmedString(body.director)
+  const overview = body.overview === null ? null : asTrimmedString(body.overview)
+
+  if (!tmdbId || tmdbId <= 0 || !title) {
+    return Response.json({ error: 'tmdbId and title are required' }, { status: 400 })
+  }
+  if (rating !== undefined && rating !== null && (rating < 0 || rating > 10)) {
+    return Response.json({ error: 'rating must be between 0 and 10' }, { status: 400 })
+  }
+
   if (!db) {
     const movie = upsertFallbackMovie({
-      tmdbId: body.tmdbId,
-      title: body.title,
-      poster: body.poster ?? null,
-      year: body.year ?? null,
-      genre: body.genre ?? null,
-      rating: body.rating ?? null,
-      runtime: body.runtime ?? null,
-      director: body.director ?? null,
-      overview: body.overview ?? null,
-      status: body.status ?? 'watched',
+      tmdbId,
+      title,
+      poster: poster ?? null,
+      year: year ?? null,
+      genre: genre ?? null,
+      rating: rating ?? null,
+      runtime: runtime ?? null,
+      director: director ?? null,
+      overview: overview ?? null,
+      status,
     })
     addFallbackHistory({
       mediaType: 'movie',
@@ -45,27 +71,27 @@ export async function POST(req: NextRequest) {
   }
   try {
     const movie = await db.movie.upsert({
-      where: { userId_tmdbId: { userId, tmdbId: Number(body.tmdbId) } },
+      where: { userId_tmdbId: { userId, tmdbId } },
       update: {
-        status: body.status,
-        rating: body.rating ?? null,
-        genre: body.genre ?? undefined,
-        runtime: body.runtime ?? undefined,
-        director: body.director ?? undefined,
-        overview: body.overview ?? undefined,
+        status,
+        rating: rating ?? null,
+        genre: genre ?? undefined,
+        runtime: runtime ?? undefined,
+        director: director ?? undefined,
+        overview: overview ?? undefined,
       },
       create: {
-        tmdbId: body.tmdbId,
+        tmdbId,
         userId,
-        title: body.title,
-        poster: body.poster ?? null,
-        year: body.year ?? null,
-        genre: body.genre ?? null,
-        rating: body.rating ?? null,
-        runtime: body.runtime ?? null,
-        director: body.director ?? null,
-        overview: body.overview ?? null,
-        status: body.status ?? 'watched',
+        title,
+        poster: poster ?? null,
+        year: year ?? null,
+        genre: genre ?? null,
+        rating: rating ?? null,
+        runtime: runtime ?? null,
+        director: director ?? null,
+        overview: overview ?? null,
+        status,
       },
     })
     // Log to history

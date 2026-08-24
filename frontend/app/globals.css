@@ -1380,6 +1380,46 @@ label {
   cursor: pointer;
 }
 
+.card-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.chip-btn {
+  border: 1px solid var(--border);
+  background: var(--card-alt);
+  color: var(--muted);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 5px 8px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.chip-btn:hover {
+  color: var(--text);
+  border-color: var(--gold-border);
+}
+
+.chip-btn-active {
+  color: var(--gold);
+  border-color: var(--gold-border);
+  background: var(--gold-dim);
+}
+
+.chip-btn-continue {
+  color: var(--blue);
+}
+
+.chip-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .form-error {
   color: #ff8b8b;
   font-size: 12px;
